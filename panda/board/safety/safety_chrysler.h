@@ -99,12 +99,12 @@ static int chrysler_rx_hook(CANPacket_t *to_push) {
       int speed_l = (GET_BYTE(to_push, 0) << 4) + (GET_BYTE(to_push, 1) >> 4);
       int speed_r = (GET_BYTE(to_push, 2) << 4) + (GET_BYTE(to_push, 3) >> 4);
       vehicle_speed = (speed_l + speed_r) / 2;
-      vehicle_moving = (int)vehicle_speed > CHRYSLER_STANDSTILL_THRSLD;
+      vehicle_moving = (bool)((int)vehicle_speed > CHRYSLER_STANDSTILL_THRSLD);
     }
 
     // exit controls on rising edge of gas press
     if (addr == 308) {
-      gas_pressed = ((GET_BYTE(to_push, 5) & 0x7FU) != 0U) && ((int)vehicle_speed > CHRYSLER_GAS_THRSLD);
+      gas_pressed = (bool)(((GET_BYTE(to_push, 5) & 0x7FU) != 0U) && ((int)vehicle_speed > CHRYSLER_GAS_THRSLD));
     }
 
     // exit controls on rising edge of brake press
