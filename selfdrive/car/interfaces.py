@@ -64,7 +64,6 @@ class CarInterfaceBase(ABC):
     self.frame = 0
     self.steering_unpressed = 0
     self.low_speed_alert = False
-    self.no_steer_warning = False
     self.silent_steer_warning = True
     self.v_ego_cluster_seen = False
 
@@ -162,7 +161,7 @@ class CarInterfaceBase(ABC):
     ret.openpilotLongitudinalControl = False
     ret.stopAccel = -2.0
     ret.stoppingDecelRate = 0.8 # brake_travel/s while trying to stop
-    ret.vEgoStopping = 0.5
+    ret.vEgoStopping = 0.15
     ret.vEgoStarting = 0.5
     ret.stoppingControl = True
     ret.longitudinalTuning.deadzoneBP = [0.]

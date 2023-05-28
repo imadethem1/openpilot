@@ -2,8 +2,10 @@ from cereal import car
 from common.conversions import Conversions as CV
 from opendbc.can.parser import CANParser
 from opendbc.can.can_define import CANDefine
+from selfdrive.car.chrysler.chryslerlonghelper import SET_SPEED_MIN
 from selfdrive.car.interfaces import CarStateBase
 from selfdrive.car.chrysler.values import DBC, STEER_THRESHOLD, RAM_CARS
+from common.params import Params
 
 
 class CarState(CarStateBase):
@@ -11,15 +13,13 @@ class CarState(CarStateBase):
     super().__init__(CP)
     self.CP = CP
     can_define = CANDefine(DBC[CP.carFingerprint]["pt"])
-
-    self.auto_high_beam = 0
-    self.button_counter = 0
-    self.lkas_car_model = -1
-
     if CP.carFingerprint in RAM_CARS:
       self.shifter_values = can_define.dv["Transmission_Status"]["Gear_State"]
     else:
       self.shifter_values = can_define.dv["GEAR"]["PRNDL"]
+    self.acc_on_button = False
+    self.veh_on_timer = 0
+    self.axle_torq = 0
 
   def update(self, cp, cp_cam):
 
@@ -32,97 +32,128 @@ class CarState(CarStateBase):
                         cp.vl["BCM_1"]["DOOR_OPEN_RR"]])
     ret.seatbeltUnlatched = cp.vl["ORC_1"]["SEATBELT_DRIVER_UNLATCHED"] == 1
 
-    # brake pedal
-    ret.brake = 0
-    ret.brakePressed = cp.vl["ESP_1"]['Brake_Pedal_State'] == 1  # Physical brake pedal switch
-
-    # gas pedal
-    ret.gas = cp.vl["ECM_5"]["Accelerator_Position"]
+    ret.brakePressed = cp.vl["ESP_1"]["BRAKE_PEDAL"] == 1  # driver-only
+    ret.brake = cp.vl["ESP_8"]["BRAKE_VAL_TOTAL"]
+    # ret.brakeLights = bool(cp.vl["ESP_1"]["BRAKE_LIGHT"])
+    ret.gas = cp.vl["ACCEL_GAS_22F"]["GAS_PEDAL_POS"]
     ret.gasPressed = ret.gas > 1e-5
 
-    # car speed
-    if self.CP.carFingerprint in RAM_CARS:
-      ret.vEgoRaw = cp.vl["ESP_8"]["Vehicle_Speed"] * CV.KPH_TO_MS
-      ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(cp.vl["Transmission_Status"]["Gear_State"], None))
-    else:
-      ret.vEgoRaw = (cp.vl["SPEED_1"]["SPEED_LEFT"] + cp.vl["SPEED_1"]["SPEED_RIGHT"]) / 2.
-      ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(cp.vl["GEAR"]["PRNDL"], None))
+    ret.espDisabled = (cp.vl["TRACTION_BUTTON"]["TRACTION_OFF"] == 1)
+
+    ret.wheelSpeeds.fl = cp.vl["ESP_6"]["WHEEL_SPEED_FL"]
+    ret.wheelSpeeds.rr = cp.vl["ESP_6"]["WHEEL_SPEED_RR"]
+    ret.wheelSpeeds.rl = cp.vl["ESP_6"]["WHEEL_SPEED_RL"]
+    ret.wheelSpeeds.fr = cp.vl["ESP_6"]["WHEEL_SPEED_FR"]
+    ret.vEgoRaw = cp.vl["ESP_8"]["VEHICLE_SPEED_KPH"] * CV.KPH_TO_MS
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
-    ret.standstill = not ret.vEgoRaw > 0.001
-    ret.wheelSpeeds = self.get_wheel_speeds(
-      cp.vl["ESP_6"]["WHEEL_SPEED_FL"],
-      cp.vl["ESP_6"]["WHEEL_SPEED_FR"],
-      cp.vl["ESP_6"]["WHEEL_SPEED_RL"],
-      cp.vl["ESP_6"]["WHEEL_SPEED_RR"],
-      unit=1,
-    )
+    ret.standstill = bool(cp.vl["ESP_8"]["STANDSTILL"])
+    self.long_accel = cp.vl["INERTIAL_SENSOR"]["LONG_ACCEL"]
+    ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(cp.vl["GEAR"]["PRNDL"], None))
 
     # button presses
     ret.leftBlinker, ret.rightBlinker = self.update_blinker_from_stalk(200, cp.vl["STEERING_LEVERS"]["TURN_SIGNALS"] == 1,
                                                                        cp.vl["STEERING_LEVERS"]["TURN_SIGNALS"] == 2)
-    ret.genericToggle = cp.vl["STEERING_LEVERS"]["HIGH_BEAM_PRESSED"] == 1
 
     # steering wheel
     ret.steeringAngleDeg = cp.vl["STEERING"]["STEERING_ANGLE"] + cp.vl["STEERING"]["STEERING_ANGLE_HP"]
     ret.steeringRateDeg = cp.vl["STEERING"]["STEERING_RATE"]
-    ret.steeringTorque = cp.vl["EPS_2"]["COLUMN_TORQUE"]
-    ret.steeringTorqueEps = cp.vl["EPS_2"]["EPS_TORQUE_MOTOR"]
-    ret.steeringPressed = abs(ret.steeringTorque) > STEER_THRESHOLD
 
-    # cruise state
-    cp_cruise = cp_cam if self.CP.carFingerprint in RAM_CARS else cp
+    self.acc_on_button_prev = self.acc_on_button
+    self.acc_on_button = bool(cp.vl["WHEEL_BUTTONS"]["ACC_BUTTON_ON"])
+    self.reg_cc_on_button = bool(cp.vl["WHEEL_BUTTONS"]["REG_CC_BUTTON_ON"])
 
-    ret.cruiseState.available = cp_cruise.vl["DAS_3"]["ACC_AVAILABLE"] == 1
-    ret.cruiseState.enabled = cp_cruise.vl["DAS_3"]["ACC_ACTIVE"] == 1
-    ret.cruiseState.speed = cp_cruise.vl["DAS_4"]["ACC_SET_SPEED_KPH"] * CV.KPH_TO_MS
-    ret.cruiseState.nonAdaptive = cp_cruise.vl["DAS_4"]["ACC_STATE"] in (1, 2)  # 1 NormalCCOn and 2 NormalCCSet
-    ret.cruiseState.standstill = cp_cruise.vl["DAS_3"]["ACC_STANDSTILL"] == 1
-    ret.accFaulted = cp_cruise.vl["DAS_3"]["ACC_FAULTED"] != 0
+    ret.cruiseState.enabled = bool(cp.vl["ACC_2"]["ACC_ENABLED"])  # ACC is green.
+    ret.cruiseState.available = bool(cp.vl["ACC_2"]["ACC_AVAILABLE"])
+    ret.cruiseState.speed = max(cp.vl["DASHBOARD"]["ACC_SET_SPEED_MPH"] * CV.MPH_TO_MS, SET_SPEED_MIN)
+    # CRUISE_STATE is a three bit msg, 0 is off, 1 and 2 are Non-ACC mode, 3 and 4 are ACC mode, find if there are other states too
+    ret.cruiseState.nonAdaptive = cp.vl["DASHBOARD"]["CRUISE_STATE"] in (1, 2)
 
-    if self.CP.carFingerprint in RAM_CARS:
-      self.auto_high_beam = cp_cam.vl["DAS_6"]['AUTO_HIGH_BEAM_ON']  # Auto High Beam isn't Located in this message on chrysler or jeep currently located in 729 message
-      ret.steerFaultTemporary = cp.vl["EPS_3"]["DASM_FAULT"] == 1
+
+    self.desiredExperimentalToggleStatus = False
+    if cp.vl["DASHBOARD"]["CRUISE_ICON"] in (2, 8, 12):
+      ret.cruiseState.followSettings = 1
+    elif cp.vl["DASHBOARD"]["CRUISE_ICON"] in (3, 9, 13):
+      ret.cruiseState.followSettings = 2
+    elif cp.vl["DASHBOARD"]["CRUISE_ICON"] in (4, 10, 14):
+      ret.cruiseState.followSettings = 3
     else:
-      ret.steerFaultTemporary = cp.vl["EPS_2"]["LKAS_TEMPORARY_FAULT"] == 1
-      ret.steerFaultPermanent = cp.vl["EPS_2"]["LKAS_STATE"] == 4
+      ret.cruiseState.followSettings = 4
+      self.desiredExperimentalToggleStatus = True
 
-    # blindspot sensors
+    if self.desiredExperimentalToggleStatus != Params().get_bool('ExperimentalMode'):
+      Params().put_bool("ExperimentalMode", self.desiredExperimentalToggleStatus)
+    if self.desiredExperimentalToggleStatus != Params().get_bool('ExperimentalLongitudinalEnabled'):
+      Params().put_bool("ExperimentalLongitudinalEnabled", self.desiredExperimentalToggleStatus)
+
+    ret.steeringTorque = cp.vl["EPS_2"]["TORQUE_DRIVER"]/4
+    ret.steeringTorqueEps = cp.vl["EPS_2"]["TORQUE_MOTOR"]/4 if Params().get_bool("ChryslerMangoLat") else cp.vl["EPS_2"]["TORQUE_MOTOR"]
+    ret.steeringPressed = abs(ret.steeringTorque) > STEER_THRESHOLD/4
+    # cruise state
+    #cp_cruise = cp_cam if self.CP.carFingerprint in RAM_CARS else cp
+
+    self.steerFaultPermanent = cp.vl["EPS_2"]["LKAS_STEER_FAULT"] == 4
+    self.apaFault = cp.vl["EPS_2"]["APA_STEER_FAULT"] == 1
+    self.apasteerOn = cp.vl["EPS_2"]["APA_ACTIVE"] == 1
+
+    ret.genericToggle = bool(cp.vl["STEERING_LEVERS"]["HIGH_BEAM_FLASH"])
+
     if self.CP.enableBsm:
-      ret.leftBlindspot = cp.vl["BSM_1"]["LEFT_STATUS"] == 1
-      ret.rightBlindspot = cp.vl["BSM_1"]["RIGHT_STATUS"] == 1
+      ret.leftBlindspot = cp.vl["BLIND_SPOT_WARNINGS"]["BLIND_SPOT_LEFT"] == 1
+      ret.rightBlindspot = cp.vl["BLIND_SPOT_WARNINGS"]["BLIND_SPOT_RIGHT"] == 1
 
-    self.lkas_car_model = cp_cam.vl["DAS_6"]["CAR_MODEL"]
-    self.button_counter = cp.vl["CRUISE_BUTTONS"]["COUNTER"]
+    self.lkas_counter = cp_cam.vl["LKAS_COMMAND"]["COUNTER"]
+    self.lkas_status_ok = cp_cam.vl["LKAS_HEARTBIT"]["LKAS_BUTTON_LED"]
+    self.apa_steer_status = cp.vl["AUTO_PARK_REQUEST"]["APA_STEER_ACT"] == 1
+    if self.CP.enablehybridEcu:
+       if cp.vl["HYBRID_ECU"]["VEH_ON"] == 1:
+         self.veh_on_timer += 1
+       else:
+         self.veh_on_timer = 0
+       self.veh_on = self.veh_on_timer >= 50
+       self.axle_torq = cp.vl["AXLE_TORQ"]["AXLE_TORQ"]
+       self.axle_torq_max = cp.vl["AXLE_TORQ"]["AXLE_TORQ_MAX"]
+       self.axle_torq_min = cp.vl["AXLE_TORQ"]["AXLE_TORQ_MIN"]
+       self.hybrid_power_meter = cp.vl["HEV_HMI"]["ELEC_MODE_PERCENT"]
+    else:
+      self.veh_on_timer += 1
+      self.veh_on = self.veh_on_timer >= 200
+      self.axle_torq_min = 20.
+      self.axle_torq_max = 300.
+      self.hybrid_power_meter = 1
+
+    self.acc_hold = bool(cp.vl["ACC_2"]["ACC_STOP"])
+    self.lead_dist = cp.vl["DASHBOARD"]["LEAD_DIST"]
+    self.wheel_button_counter = cp.vl["WHEEL_BUTTONS"]["COUNTER"]
+
+    self.tcs_active = bool(cp.vl["ESC_ACC_COPY"]["TCS_ACTIVE"])
+
+    self.acc_cancel_button = bool(cp.vl["WHEEL_BUTTONS"]["ACC_CANCEL"]) or self.reg_cc_on_button or self.tcs_active
+    self.acc_resume_button = bool(cp.vl["WHEEL_BUTTONS"]["ACC_RESUME"])
+    self.acc_setplus_button = bool(cp.vl["WHEEL_BUTTONS"]["ACC_SPEED_INC"])
+    self.acc_setminus_button = bool(cp.vl["WHEEL_BUTTONS"]["ACC_SPEED_DEC"])
+    self.acc_followdec_button = bool(cp.vl["WHEEL_BUTTONS"]["ACC_FOLLOW_DEC"])
+    self.acc_followinc_button = bool(cp.vl["WHEEL_BUTTONS"]["ACC_FOLLOW_INC"])
+
+    self.acc_button_pressed = self.acc_cancel_button or self.acc_resume_button or self.acc_setplus_button or \
+                              self.acc_setminus_button or self.acc_followdec_button or self.acc_followinc_button
+
+    ret.accgasOverride = bool(cp.vl["ACCEL_RELATED_120"]["ACC_OVERRIDE"])
+    self.accbrakeFaulted = ((cp.vl["ESP_1"]["ACC_BRAKE_FAIL"]) > 0) or ((cp.vl["ACC_ERROR"]["ACC_ERROR"]) > 0)
+    self.accengFaulted = (cp.vl["ACCEL_RELATED_120"]["ACC_ENG_OK"]) == 0
 
     return ret
-
-  @staticmethod
-  def get_cruise_signals():
-    signals = [
-      ("ACC_AVAILABLE", "DAS_3"),
-      ("ACC_ACTIVE", "DAS_3"),
-      ("ACC_FAULTED", "DAS_3"),
-      ("ACC_STANDSTILL", "DAS_3"),
-      ("COUNTER", "DAS_3"),
-      ("ACC_SET_SPEED_KPH", "DAS_4"),
-      ("ACC_STATE", "DAS_4"),
-    ]
-    checks = [
-      ("DAS_3", 50),
-      ("DAS_4", 50),
-    ]
-    return signals, checks
 
   @staticmethod
   def get_can_parser(CP):
     signals = [
       # sig_name, sig_address
+      ("PRNDL", "GEAR"),
       ("DOOR_OPEN_FL", "BCM_1"),
       ("DOOR_OPEN_FR", "BCM_1"),
       ("DOOR_OPEN_RL", "BCM_1"),
       ("DOOR_OPEN_RR", "BCM_1"),
-      ("Brake_Pedal_State", "ESP_1"),
-      ("Accelerator_Position", "ECM_5"),
+      ("BRAKE_PEDAL", "ESP_1"),
+      ("GAS_PEDAL_POS", "ACCEL_GAS_22F"),
       ("WHEEL_SPEED_FL", "ESP_6"),
       ("WHEEL_SPEED_RR", "ESP_6"),
       ("WHEEL_SPEED_RL", "ESP_6"),
@@ -131,77 +162,107 @@ class CarState(CarStateBase):
       ("STEERING_ANGLE_HP", "STEERING"),
       ("STEERING_RATE", "STEERING"),
       ("TURN_SIGNALS", "STEERING_LEVERS"),
-      ("HIGH_BEAM_PRESSED", "STEERING_LEVERS"),
+      ("ACC_ENABLED", "ACC_2"),
+      ("ACC_AVAILABLE", "ACC_2"),
+      ("HIGH_BEAM_FLASH", "STEERING_LEVERS"),
+      ("ACC_SET_SPEED_MPH", "DASHBOARD"),
+      ("LEAD_DIST", "DASHBOARD"),
+      ("CRUISE_STATE", "DASHBOARD"),
+      ("TORQUE_DRIVER", "EPS_2"),
+      ("DRIVER_TAKEOVER", "EPS_2"),
+      ("TORQUE_MOTOR", "EPS_2"),
+      ("LKAS_STEER_FAULT", "EPS_2"),
+      ("COUNTER", "EPS_2"),
+      ("TRACTION_OFF", "TRACTION_BUTTON"),
       ("SEATBELT_DRIVER_UNLATCHED", "ORC_1"),
-      ("COUNTER", "EPS_2",),
-      ("COLUMN_TORQUE", "EPS_2"),
-      ("EPS_TORQUE_MOTOR", "EPS_2"),
-      ("LKAS_TEMPORARY_FAULT", "EPS_2"),
-      ("LKAS_STATE", "EPS_2"),
-      ("COUNTER", "CRUISE_BUTTONS"),
+      ("APA_ACTIVE", "EPS_2"),
+      ("APA_STEER_FAULT", "EPS_2"),
+      ("ACC_STOP", "ACC_2"),
+      ("BLIND_SPOT_RIGHT", "BLIND_SPOT_WARNINGS"),
+      ("BLIND_SPOT_LEFT", "BLIND_SPOT_WARNINGS"),
+      ("COUNTER", "WHEEL_BUTTONS"),
+      ("ACC_RESUME", "WHEEL_BUTTONS"),
+      ("ACC_CANCEL", "WHEEL_BUTTONS"),
+      ("ACC_SPEED_INC", "WHEEL_BUTTONS"),
+      ("ACC_SPEED_DEC", "WHEEL_BUTTONS"),
+      ("ACC_FOLLOW_INC", "WHEEL_BUTTONS"),
+      ("ACC_FOLLOW_DEC", "WHEEL_BUTTONS"),
+      ("ACC_BUTTON_ON", "WHEEL_BUTTONS"),
+      ("REG_CC_BUTTON_ON", "WHEEL_BUTTONS"),
+      ("CRUISE_ICON", "DASHBOARD"),
+      ("STANDSTILL", "ESP_8"),
+      ("BRAKE_VAL_TOTAL", "ESP_8"),
+      ("VEHICLE_SPEED_KPH", "ESP_8"),
+      ("BRAKE_LIGHT", "ESP_1"),
+      ("APA_STEER_ACT", "AUTO_PARK_REQUEST"),
+      ("ACC_OVERRIDE", "ACCEL_RELATED_120"),
+      ("ACC_BRAKE_FAIL", "ESP_1"),
+      ("ACC_ENG_OK", "ACCEL_RELATED_120"),
+      ("ACC_ERROR", "ACC_ERROR"),
+      ("LONG_ACCEL", "INERTIAL_SENSOR"),
+      ("TCS_ACTIVE", "ESC_ACC_COPY"),
     ]
 
     checks = [
       # sig_address, frequency
       ("ESP_1", 50),
       ("EPS_2", 100),
+      ("SPEED_1", 100),
       ("ESP_6", 50),
       ("STEERING", 100),
-      ("ECM_5", 50),
-      ("CRUISE_BUTTONS", 50),
+      ("ACC_2", 50),
+      ("GEAR", 50),
+      ("ACCEL_GAS_134", 50),
+      ("DASHBOARD", 15),
       ("STEERING_LEVERS", 10),
       ("ORC_1", 2),
       ("BCM_1", 1),
+      ("TRACTION_BUTTON", 1),
+      ("BLIND_SPOT_WARNINGS", 2),
+      ("ESP_8", 50),
+      ("AUTO_PARK_REQUEST", 50),
+      ("WHEEL_BUTTONS", 1),
+      ("ACCEL_GAS_22F", 50),
+      ("ACCEL_RELATED_120", 50),
+      ("ACC_ERROR", 0),
+      ("INERTIAL_SENSOR", 50),
+      ("ESC_ACC_COPY", 50),
     ]
+
+    if CP.enablehybridEcu:
+      signals += [
+        ("VEH_ON", "HYBRID_ECU", 0),
+        ("AXLE_TORQ", "AXLE_TORQ", 0),
+        ("AXLE_TORQ_MIN", "AXLE_TORQ", 0),
+        ("AXLE_TORQ_MAX", "AXLE_TORQ", 0),
+        ("ELEC_MODE_PERCENT", "HEV_HMI", 0),
+      ]
+      checks += [
+        ("HYBRID_ECU", 1),
+        ("AXLE_TORQ", 100),
+        ("HEV_HMI", 10),
+      ]
 
     if CP.enableBsm:
       signals += [
-        ("RIGHT_STATUS", "BSM_1"),
-        ("LEFT_STATUS", "BSM_1"),
+        ("BLIND_SPOT_RIGHT", "BLIND_SPOT_WARNINGS"),
+        ("BLIND_SPOT_LEFT", "BLIND_SPOT_WARNINGS"),
       ]
-      checks.append(("BSM_1", 2))
-
-    if CP.carFingerprint in RAM_CARS:
-      signals += [
-        ("DASM_FAULT", "EPS_3"),
-        ("Vehicle_Speed", "ESP_8"),
-        ("Gear_State", "Transmission_Status"),
-      ]
-      checks += [
-        ("ESP_8", 50),
-        ("EPS_3", 50),
-        ("Transmission_Status", 50),
-      ]
-    else:
-      signals += [
-        ("PRNDL", "GEAR"),
-        ("SPEED_LEFT", "SPEED_1"),
-        ("SPEED_RIGHT", "SPEED_1"),
-      ]
-      checks += [
-        ("GEAR", 50),
-        ("SPEED_1", 100),
-      ]
-      signals += CarState.get_cruise_signals()[0]
-      checks += CarState.get_cruise_signals()[1]
+      checks.append(("BLIND_SPOT_WARNINGS", 2))
 
     return CANParser(DBC[CP.carFingerprint]["pt"], signals, checks, 0)
 
   @staticmethod
   def get_cam_can_parser(CP):
     signals = [
-      # sig_name, sig_address, default
-      ("CAR_MODEL", "DAS_6"),
+      # sig_name, sig_address
+      ("COUNTER", "LKAS_COMMAND"),
+      ("LKAS_BUTTON_LED", "LKAS_HEARTBIT")
     ]
     checks = [
-      ("DAS_6", 4),
+      ("LKAS_COMMAND", 100),
+      ("LKAS_HEARTBIT", 10),
+      ("LKAS_HUD", 4),
     ]
-
-    if CP.carFingerprint in RAM_CARS:
-      signals += [
-        ("AUTO_HIGH_BEAM_ON", "DAS_6"),
-      ]
-      signals += CarState.get_cruise_signals()[0]
-      checks += CarState.get_cruise_signals()[1]
 
     return CANParser(DBC[CP.carFingerprint]["pt"], signals, checks, 2)

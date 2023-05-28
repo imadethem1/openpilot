@@ -313,8 +313,8 @@ class Controls:
       # All pandas must match the list of safetyConfigs, and if outside this list, must be silent or noOutput
       if i < len(self.CP.safetyConfigs):
         safety_mismatch = pandaState.safetyModel != self.CP.safetyConfigs[i].safetyModel or \
-                          pandaState.safetyParam != self.CP.safetyConfigs[i].safetyParam or \
-                          pandaState.alternativeExperience != self.CP.alternativeExperience
+                          pandaState.safetyParam != self.CP.safetyConfigs[i].safetyParam #or \
+                         # pandaState.alternativeExperience != self.CP.alternativeExperience
       else:
         safety_mismatch = pandaState.safetyModel not in IGNORED_SAFETY_MODES
 
@@ -695,7 +695,9 @@ class Controls:
     hudControl.setSpeed = float(self.v_cruise_helper.v_cruise_cluster_kph * CV.KPH_TO_MS)
     hudControl.speedVisible = self.enabled
     hudControl.lanesVisible = self.enabled
+    CC.hudControl.leadvRel = self.sm['radarState'].leadOne.vRel
     hudControl.leadVisible = self.sm['longitudinalPlan'].hasLead
+    CC.hudControl.leadDistance = self.sm['radarState'].leadOne.dRel
 
     hudControl.rightLaneVisible = True
     hudControl.leftLaneVisible = True
