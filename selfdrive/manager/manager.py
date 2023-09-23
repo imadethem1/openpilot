@@ -44,7 +44,7 @@ def manager_init():
     ("SccHarnessPresent", "0"),
     ("LkasFullRangeAvailable", "1"),
     ("ChryslerMangoLat", "1"),
-    ("ChryslerMangoLong", "1"),
+    ("ChryslerMangoLong", "0"),
     ("DisableUpdates", "0"),
   ]
 
