@@ -194,7 +194,7 @@ class CarInterfaceBase(ABC):
     ret.openpilotLongitudinalControl = False
     ret.stopAccel = -2.0
     ret.stoppingDecelRate = 0.8 # brake_travel/s while trying to stop
-    ret.vEgoStopping = 0.5
+    ret.vEgoStopping = 0.1
     ret.vEgoStarting = 0.5
     ret.stoppingControl = True
     ret.longitudinalTuning.kf = 1.

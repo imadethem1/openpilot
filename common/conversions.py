@@ -15,5 +15,8 @@ class Conversions:
   DEG_TO_RAD = np.pi / 180.
   RAD_TO_DEG = 1. / DEG_TO_RAD
 
+    #acceltoNm
+  ACCEL_TO_NM = 1200
+
   # Mass
   LB_TO_KG = 0.453592
