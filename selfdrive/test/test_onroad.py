@@ -42,7 +42,7 @@ PROCS = {
   "./encoderd": 17.0,
   "./camerad": 14.5,
   "selfdrive.controls.plannerd": 11.0,
-  "./ui": 18.0,
+  "ui": 18.0,
   "selfdrive.locationd.paramsd": 9.0,
   "./sensord": 7.0,
   "selfdrive.controls.radard": 2.0,
@@ -54,7 +54,7 @@ PROCS = {
   "selfdrive.locationd.locationd": 25.0,
   "selfdrive.ui.soundd": 3.5,
   "selfdrive.monitoring.dmonitoringd": 4.0,
-  "./proclogd": 1.54,
+  "proclogd": 1.54,
   "system.logmessaged": 0.2,
   "system.tombstoned": 0,
   "./logcatd": 0,
@@ -68,12 +68,12 @@ PROCS = {
 
 PROCS.update({
   "tici": {
-    "./pandad": 4.0,
-    "./ubloxd": 0.02,
+    "pandad": 4.0,
+    "ubloxd": 0.02,
     "system.ubloxd.pigeond": 6.0,
   },
   "tizi": {
-     "./pandad": 19.0,
+     "pandad": 19.0,
     "system.qcomgpsd.qcomgpsd": 1.0,
   }
 }.get(HARDWARE.get_device_type(), {}))
@@ -249,8 +249,7 @@ class TestOnroad:
     for pl in self.service_msgs['procLog']:
       for x in pl.procLog.procs:
         if len(x.cmdline) > 0:
-          n = list(x.cmdline)[0]
-          plogs_by_proc[n].append(x)
+          plogs_by_proc[x.name].append(x)
     print(plogs_by_proc.keys())
 
     cpu_ok = True
@@ -260,7 +259,7 @@ class TestOnroad:
       err = ""
       exp = "???"
       cpu_usage = 0.
-      x = plogs_by_proc[proc_name]
+      x = plogs_by_proc[proc_name[-15:]]
       if len(x) > 2:
         cpu_time = cputime_total(x[-1]) - cputime_total(x[0])
         cpu_usage = cpu_time / dt * 100.
@@ -312,7 +311,7 @@ class TestOnroad:
     assert max(mems) - min(mems) <= 3.0
 
   def test_gpu_usage(self):
-    assert self.gpu_procs == {"weston", "ui", "camerad", "selfdrive.modeld.modeld"}
+    assert self.gpu_procs == {"weston", "ui", "camerad", "modeld"}
 
   def test_camera_processing_time(self):
     result = "\n"
