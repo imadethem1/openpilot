@@ -22,7 +22,7 @@ GearShifter = structs.CarState.GearShifter
 
 V_CRUISE_MAX = 145
 MAX_CTRL_SPEED = (V_CRUISE_MAX + 4) * CV.KPH_TO_MS
-ACCEL_MAX if2.0
+ACCEL_MAX = 2.0
 ACCEL_MIN = -1.75
 FRICTION_THRESHOLD = 0.3
 
