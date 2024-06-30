@@ -126,8 +126,8 @@ def accel_rate_limit(accel_lim, prev_accel_lim, stopped):
  # acceleration jerk = 2.0 m/s/s/s
  # brake jerk = 3.8 m/s/s/s
 
-  drBp = [ 0., -0.15, -0.50,  -2.0,  -5.0]
-  dra = [ 0.005, 0.007,  0.008, 0.01,  0.02]
+  drBp = [ 0., -0.15, -0.50] #  -2.0,  -5.0]
+  dra = [ 0.005, 0.006,  0.007] # 0.01,  0.02]
 
   decel_rate = interp(accel_lim, drBp, dra)
   accel_rate = 0.005
@@ -135,7 +135,7 @@ def accel_rate_limit(accel_lim, prev_accel_lim, stopped):
   if not stopped:
     if accel_lim > 0:
       if accel_lim > prev_accel_lim:
-        accel_lim = min(accel_lim, prev_accel_lim + accel_rate)
+        accel_lim = min(accel_lim, prev_accel_lim + 0.02)
       else:
         accel_lim = max(accel_lim, prev_accel_lim - 0.02)
     else:
