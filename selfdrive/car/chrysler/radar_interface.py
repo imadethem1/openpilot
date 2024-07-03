@@ -90,7 +90,7 @@ class RadarInterface(RadarInterfaceBase):
         self.pts[trackId].measured = bool(cpt['MEASURED'])
 
     # We want a list, not a dictionary. Filter out LONG_DIST==0 because that means it's not valid.
-    ret.points = [x for x in self.pts.values() if x.measured and 250 > x.dRel > 0]
+    ret.points = [x for x in self.pts.values() if x.measured and 290 > x.dRel > 260]
 
     self.updated_messages.clear()
     return ret
