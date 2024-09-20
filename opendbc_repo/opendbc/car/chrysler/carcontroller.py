@@ -1,20 +1,18 @@
 import copy
 from numpy import interp
 from cereal import car
-from openpilot.selfdrive.car.chrysler.chryslercan import create_lkas_hud, create_lkas_command, \
+from opendbc.car.chrysler.chryslercan import create_lkas_hud, create_lkas_command, \
   create_wheel_buttons, create_mango_hud, create_op_acc_1, create_op_acc_2, create_op_dashboard, create_op_chime
 from opendbc.can.packer import CANPacker
-from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.car import apply_meas_steer_torque_limits
-from openpilot.selfdrive.car.interfaces import GearShifter
-from openpilot.common.params import Params
+from opendbc.car.interfaces import GearShifter
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.numpy_fast import clip
-from openpilot.selfdrive.car.chrysler.chryslerlonghelper import cluster_chime, accel_hysteresis, accel_rate_limit, \
-  cruiseiconlogic, setspeedlogic, SET_SPEED_MIN, DEFAULT_DECEL, STOP_GAS_THRESHOLD, START_BRAKE_THRESHOLD, \
+from opendbc.car.chrysler.chryslerlonghelper import cluster_chime, accel_hysteresis, accel_rate_limit, \
+  cruiseiconlogic, setspeedlogic, SET_SPEED_MIN, DEFAULT_DECEL, START_BRAKE_THRESHOLD, \
   STOP_BRAKE_THRESHOLD, START_GAS_THRESHOLD, CHIME_GAP_TIME, ACCEL_SCALE, ACCEL_MIN, ACCEL_MAX
-from openpilot.selfdrive.car.chrysler.values import CAR, CarControllerParams, ChryslerFlags
-from openpilot.selfdrive.car.interfaces import CarControllerBase
+from opendbc.car.chrysler.values import CAR, CarControllerParams
+from opendbc.car.interfaces import CarControllerBase
 
 LongCtrlState = car.CarControl.Actuators.LongControlState
 

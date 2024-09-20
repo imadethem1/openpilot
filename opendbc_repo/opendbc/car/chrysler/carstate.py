@@ -1,12 +1,10 @@
 from opendbc.can.parser import CANParser
 from opendbc.can.can_define import CANDefine
 from opendbc.car import create_button_events, structs
-from opendbc.car.chrysler.values import DBC, STEER_THRESHOLD, RAM_CARS
 from opendbc.car.common.conversions import Conversions as CV
+from opendbc.car.chrysler.chryslerlonghelper import SET_SPEED_MIN
 from opendbc.car.interfaces import CarStateBase
-from openpilot.selfdrive.car.chrysler.chryslerlonghelper import SET_SPEED_MIN
-from openpilot.selfdrive.car.interfaces import CarStateBase
-from openpilot.selfdrive.car.chrysler.values import DBC, STEER_THRESHOLD, RAM_CARS
+from opendbc.car.chrysler.values import DBC, STEER_THRESHOLD, RAM_CARS
 from openpilot.common.params import Params
 
 ButtonType = structs.CarState.ButtonEvent.Type

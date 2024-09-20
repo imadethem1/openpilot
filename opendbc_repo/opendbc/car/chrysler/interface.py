@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 from panda import Panda
 from opendbc.car import get_safety_config, structs
-from opendbc.car.chrysler.values import CAR, RAM_HD, RAM_DT, RAM_CARS, ChryslerFlags
-from opendbc.car.interfaces import CarInterfaceBase
 from openpilot.selfdrive.car import create_button_events, get_safety_config
-from openpilot.selfdrive.car.chrysler.values import CAR, RAM_HD, RAM_DT, RAM_CARS, ChryslerFlags
-from openpilot.selfdrive.car.interfaces import CarInterfaceBase
-from openpilot.common.params import Params
+from opendbc.car.chrysler.values import CAR, RAM_HD, RAM_DT
+from opendbc.car.interfaces import CarInterfaceBase
 ButtonType = car.CarState.ButtonEvent.Type
 
 

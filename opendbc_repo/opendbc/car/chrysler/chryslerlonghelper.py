@@ -1,7 +1,5 @@
 from common.conversions import Conversions as CV
 from common.numpy_fast import clip
-from numpy import interp
-from selfdrive.car.chrysler.values import CarControllerParams
 
 
 SET_SPEED_MIN = 5 * CV.MPH_TO_MS
