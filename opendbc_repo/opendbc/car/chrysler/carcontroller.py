@@ -4,7 +4,7 @@ from cereal import car
 from opendbc.car.chrysler.chryslercan import create_lkas_hud, create_lkas_command, \
   create_wheel_buttons, create_mango_hud, create_op_acc_1, create_op_acc_2, create_op_dashboard, create_op_chime
 from opendbc.can.packer import CANPacker
-from openpilot.selfdrive.car import apply_meas_steer_torque_limits
+from opendbc.car import apply_meas_steer_torque_limits
 from opendbc.car.interfaces import GearShifter
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.numpy_fast import clip
