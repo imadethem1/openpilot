@@ -119,19 +119,8 @@ def accel_hysteresis(accel, accel_steady):
   accel = accel_steady
 
   return accel, accel_steady
-'''
-class LowPassFilter:
-  def __init__(self, alpha):
-    self.alpha = alpha
-    self.filtered_value = 4.0
 
-  def filter(self, new_value):
-    self.filtered_value = self.alpha * new_value + (1 - self.alpha) * self.filtered_value
-    return self.filtered_value
-'''
-
-#def (new_acceleration, accel_lim, alpha=0.4):
-def accel_rate_limit(accel_lim, accel_lim_prev, smoothing_factor = 0.4):
+def accel_rate_limit(accel_lim, accel_lim_prev, smoothing_factor=0.4):
     """
     Smooths the changes in acceleration using a low-pass filter.
 
@@ -147,23 +136,14 @@ def accel_rate_limit(accel_lim, accel_lim_prev, smoothing_factor = 0.4):
     """
     # Ensure smoothing factor is within the valid range
     if smoothing_factor < 0 or smoothing_factor > 1:
-        #raise ValueError("Smoothing factor must be between 0 and 1.")
-        return accel_lim
+      # raise ValueError("Smoothing factor must be between 0 and 1.")
+      return accel_lim
 
     # Apply the smoothing filter
     accel_smoothed = smoothing_factor * accel_lim + (1 - smoothing_factor) * accel_lim_prev
-    
     return accel_smoothed
- ''' # Create an instance of LowPassFilter
-  lpf = LowPassFilter(alpha)
 
-  # Limit the acceleration to the specified range
-  limited_acceleration = max(min(new_acceleration, accel_lim), -accel_lim)
-
-  # Apply the low-pass filter
-  return lpf.filter(limited_acceleration)
-'''
-#def accel_rate_limit(accel_lim, prev_accel_lim, stopped):
+  #def accel_rate_limit(accel_lim, prev_accel_lim, stopped):
 
 
  # acceleration jerk = 2.0 m/s/s/s
