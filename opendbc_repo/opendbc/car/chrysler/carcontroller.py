@@ -38,7 +38,7 @@ class CarController(CarControllerBase):
     self.full_range_steer = False #Params().get_bool('LkasFullRangeAvailable')
     self.mango_mode_active = self.mango_lat_active or self.full_range_steer
     #OPLong starts here
-    self.op_long_enable = True #CP.openpilotLongitudinalControl
+    self.op_long_enable = False #True #CP.openpilotLongitudinalControl
     self.acc_available = True
     self.acc_enabled = False
     self.set_speed = SET_SPEED_MIN
