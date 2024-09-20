@@ -202,10 +202,10 @@ struct CarState {
   stockAeb @30 :Bool;
   stockFcw @31 :Bool;
   espDisabled @32 :Bool;
-  hightorqUnavailable @51 :Bool;
+  hightorqUnavailable @49 :Bool;
   accFaulted @42 :Bool;
   carFaultedNonCritical @47 :Bool;  # some ECU is faulted, but car remains controllable
-  espActive @51 :Bool;
+  espActive @50 :Bool;
   vehicleSensorsInvalid @52 :Bool;  # invalid steering angle readings, etc.
 
   # cruise state
@@ -235,7 +235,7 @@ struct CarState {
   charging @43 :Bool;
 
   # process meta
-  cumLagMs @50 :Float32;
+  cumLagMs @51 :Float32;
 
   struct WheelSpeeds {
     # optional wheel speeds
