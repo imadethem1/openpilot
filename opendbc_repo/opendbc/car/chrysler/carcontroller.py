@@ -158,7 +158,7 @@ class CarController(CarControllerBase):
       if not enabled and pcm_cancel_cmd and CS.out.cruiseState.enabled and not self.op_long_enable:
         button_type = 'ACC_CANCEL'
         self.op_cancel_cmd = True
-      elif enabled and self.resume_press and not self.op_long_enable and ((CS.lead_dist > self.lead_dist_at_stop) or (CC.hudControl.leadvRel > 0) or (15 > CS.lead_dist >= 6.)):
+      elif enabled and self.resume_press and not self.op_long_enable and ((CS.lead_dist > self.lead_dist_at_stop) or (15 > CS.lead_dist >= 6.)):
         button_type = 'ACC_RESUME'
       elif (enabled and CS.out.standstill):
         button_type = 'ACC_RESUME'
@@ -307,7 +307,7 @@ class CarController(CarControllerBase):
       can_sends.append(new_msg)
     if self.op_long_enable and self.ccframe % 6 == 0:
       new_msg = create_op_dashboard(self.packer, self.set_speed, self.cruise_state, self.cruise_icon, CC.hudControl.leadVisible,
-                                    CC.hudControl.leadDistance, self.op_long_enable)
+                                    254 , self.op_long_enable)
       can_sends.append(new_msg)
 
     new_msg = create_op_chime(self.packer, self.chime, self.chime_timer, self.gap_timer, CHIME_GAP_TIME)
