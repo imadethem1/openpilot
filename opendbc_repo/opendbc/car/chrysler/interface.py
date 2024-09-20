@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 from panda import Panda
-from opendbc.car import get_safety_config, structs
-from openpilot.selfdrive.car import create_button_events, get_safety_config
+from opendbc.car import structs
+from opendbc.car import get_safety_config
 from opendbc.car.chrysler.values import CAR, RAM_HD, RAM_DT
 from opendbc.car.interfaces import CarInterfaceBase
-ButtonType = car.CarState.ButtonEvent.Type
-
 
 class CarInterface(CarInterfaceBase):
   @staticmethod
