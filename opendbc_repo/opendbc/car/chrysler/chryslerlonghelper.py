@@ -143,33 +143,6 @@ def accel_rate_limit(accel_lim, accel_lim_prev, smoothing_factor=0.4):
     accel_smoothed = smoothing_factor * accel_lim + (1 - smoothing_factor) * accel_lim_prev
     return accel_smoothed
 
-  #def accel_rate_limit(accel_lim, prev_accel_lim, stopped):
-
-
- # acceleration jerk = 2.0 m/s/s/s
- # brake jerk = 3.8 m/s/s/s
-
-  """drBp = [ 0., -0.5, -1.0, -2.0, -3.5] #  -2.0,  -5.0]
-  dra = [ 0.002, 0.004, 0.0035, 0.003,0.0025] # 0.01,  0.02]
-
-  decel_rate = interp(accel_lim, drBp, dra)
-  accel_rate = 0.005
-
-  if not stopped:
-    if accel_lim > 0:
-      if accel_lim > prev_accel_lim:
-        accel_lim = min(accel_lim, prev_accel_lim + 0.02)
-      else:
-        accel_lim = max(accel_lim, prev_accel_lim - 0.02)
-    else:
-      if accel_lim < prev_accel_lim:
-        accel_lim = max(accel_lim, prev_accel_lim - decel_rate)
-      else:
-        accel_lim = min(accel_lim, prev_accel_lim + accel_rate)"""
-
-  #return accel_lim
-
-
 def cluster_chime(chime_val, enabled, enabled_prev, chime_timer, gap_timer, mute):
 
   if not enabled_prev and enabled:
