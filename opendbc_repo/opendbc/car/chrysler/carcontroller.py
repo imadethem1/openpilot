@@ -315,7 +315,6 @@ class CarController(CarControllerBase):
 
     self.ccframe += 1
 
-    new_actuators = CC.actuators.as_builder()
     new_actuators = copy.copy(CC.actuators)
     new_actuators.steer = self.apply_steer_last / self.params.STEER_MAX
     new_actuators.steerOutputCan = self.apply_steer_last
