@@ -255,7 +255,7 @@ class CarController(CarControllerBase):
     apply_accel = clip(apply_accel * ACCEL_SCALE, ACCEL_MIN, accel_max_tbl)
 
     self.accel_lim = apply_accel
-    apply_accel = accel_rate_limit(self.accel_lim, self.accel_lim_prev, CS.out.standstill)
+    apply_accel = accel_rate_limit(self.accel_lim, self.accel_lim_prev) #, CS.out.standstill)
 
     if enabled and not CS.out.gasPressed and not self.go_req and\
             (self.stop_req
@@ -265,7 +265,7 @@ class CarController(CarControllerBase):
       self.decel_active = True
       self.decel_val = apply_accel
       if self.decel_val_prev > self.decel_val and not self.done:
-        self.decel_val = accel_rate_limit(self.decel_val, self.decel_val_prev, CS.out.standstill)
+        self.decel_val = accel_rate_limit(self.decel_val, self.decel_val_prev) #, CS.out.standstill)
         self.accel = self.decel_val
       else:
         self.done = True
@@ -305,6 +305,7 @@ class CarController(CarControllerBase):
       new_msg = create_op_acc_2(self.packer, self.acc_available, self.acc_enabled, self.stop_req, self.go_req,
                                 self.acc_pre_brake, self.decel_val, self.decel_active, self.acc_counter)
       can_sends.append(new_msg)
+
     if self.op_long_enable and self.ccframe % 6 == 0:
       new_msg = create_op_dashboard(self.packer, self.set_speed, self.cruise_state, self.cruise_icon, CC.hudControl.leadVisible,
                                     254 , self.op_long_enable)

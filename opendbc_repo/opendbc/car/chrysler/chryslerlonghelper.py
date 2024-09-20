@@ -120,7 +120,29 @@ def accel_hysteresis(accel, accel_steady):
 
   return accel, accel_steady
 
-def accel_rate_limit(accel_lim, prev_accel_lim, stopped):
+class LowPassFilter:
+  def __init__(self, alpha):
+    self.alpha = alpha
+    self.filtered_value = 0.0
+
+  def filter(self, new_value):
+    self.filtered_value = self.alpha * new_value + (1 - self.alpha) * self.filtered_value
+    return self.filtered_value
+
+
+def accel_rate_limit(new_acceleration, accel_lim, alpha=0.1):
+  # Create an instance of LowPassFilter
+  lpf = LowPassFilter(alpha)
+
+  # Limit the acceleration to the specified range
+  limited_acceleration = max(min(new_acceleration, accel_lim), -accel_lim)
+
+  # Apply the low-pass filter
+  return lpf.filter(limited_acceleration)
+
+#def accel_rate_limit(accel_lim, prev_accel_lim, stopped):
+
+
  # acceleration jerk = 2.0 m/s/s/s
  # brake jerk = 3.8 m/s/s/s
 
