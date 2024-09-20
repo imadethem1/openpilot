@@ -123,14 +123,14 @@ def accel_hysteresis(accel, accel_steady):
 class LowPassFilter:
   def __init__(self, alpha):
     self.alpha = alpha
-    self.filtered_value = 0.0
+    self.filtered_value = 4.0
 
   def filter(self, new_value):
     self.filtered_value = self.alpha * new_value + (1 - self.alpha) * self.filtered_value
     return self.filtered_value
 
 
-def accel_rate_limit(new_acceleration, accel_lim, alpha=0.1):
+def accel_rate_limit(new_acceleration, accel_lim, alpha=0.9):
   # Create an instance of LowPassFilter
   lpf = LowPassFilter(alpha)
 
