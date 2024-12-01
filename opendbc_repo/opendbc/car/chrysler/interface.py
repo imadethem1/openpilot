@@ -34,8 +34,8 @@ class CarInterface(CarInterfaceBase):
 
 #    ret.lateralTuning.pid.kf = 0.00002   # full torque for 10 deg at 80mph means 0.00007818594
 
-    ret.experimentalLongitudinalAvailable = True #Params().get_bool('ChryslerMangoLong')
-    ret.openpilotLongitudinalControl = True #Params().get_bool('ChryslerMangoLong')
+    ret.experimentalLongitudinalAvailable = False #Params().get_bool('ChryslerMangoLong')
+    ret.openpilotLongitudinalControl = False #Params().get_bool('ChryslerMangoLong')
 
     # Long tuning Params -  make individual params for cars, baseline Pacifica Hybrid
     ret.longitudinalTuning.kpBP = [0., 6., 10., 35.]
